@@ -83,7 +83,7 @@ int aplaypop_open(void)
     snd_pcm_info_alloca(&info);
 
     err = snd_output_stdio_attach(&log, stderr, 0);
-    assert(err >= 0);
+    assert(err == 0);
 
     err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, 0);
     if (err != 0) {
@@ -151,7 +151,7 @@ int aplaypop_open(void)
 
     if (buffer_time == 0 && buffer_frames == 0) {
         err = snd_pcm_hw_params_get_buffer_time_max(hwparams, &buffer_time, 0);
-        assert(err >= 0);
+        assert(err == 0);
         if (buffer_time > 500000)
             buffer_time = 500000;
     }
@@ -170,13 +170,13 @@ int aplaypop_open(void)
         err = snd_pcm_hw_params_set_period_time_near(handle, hwparams, &period_time, 0);
     else
         err = snd_pcm_hw_params_set_period_size_near(handle, hwparams, &period_frames, 0);
-    assert(err >= 0);
+    assert(err == 0);
 
     if (buffer_time > 0)
         err = snd_pcm_hw_params_set_buffer_time_near(handle, hwparams, &buffer_time, 0);
     else
         err = snd_pcm_hw_params_set_buffer_size_near(handle, hwparams, &buffer_frames);
-    assert(err >= 0);
+    assert(err == 0);
 
     int monotonic = snd_pcm_hw_params_is_monotonic(hwparams);
     int can_pause = snd_pcm_hw_params_can_pause(hwparams);

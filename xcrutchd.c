@@ -1,7 +1,13 @@
 // gcc -W -Wall -o xcrutchd xcrutchd.c aplaypop.c -lX11 -lXss -lasound && ./xcrutchd
 
 #include <stdio.h>
+#include <string.h> // memset()
 #include <stdlib.h> // system()
+#include <unistd.h> // read(), write()
+#include <signal.h> // sigaction()
+#include <errno.h> // EINTR
+#include <poll.h> // poll()
+#include <sys/time.h> // setitimer()
 
 #include <X11/Xlib.h>
 #include <X11/XKBlib.h>
@@ -69,6 +75,71 @@ int xss_printinfo(Display *dpy)
     return xss_event;
 }
 
+static int timer_fds[2];
+
+static void timer_alarm(int sig)
+{
+    write(timer_fds[1], "A", 1);
+}
+
+int timer_start(int ms)
+{
+    if (pipe(timer_fds) < 0) {
+        perror("pipe()");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = timer_alarm;
+    sa.sa_flags = SA_RESTART;
+    if (sigaction(SIGALRM, &sa, NULL) < 0) {
+        perror("sigaction()");
+        exit(EXIT_FAILURE);
+    }
+
+    struct itimerval it;
+    memset(&it, 0, sizeof(it));
+    it.it_value.tv_sec = ms / 1000;
+    it.it_value.tv_usec = (ms % 1000) * 1000;
+    it.it_interval.tv_sec = ms / 1000;
+    it.it_interval.tv_usec = (ms % 1000) * 1000;
+    if (setitimer(ITIMER_REAL, &it, NULL) < 0) {
+        perror("setitimer()");
+        exit(EXIT_FAILURE);
+    }
+
+    return timer_fds[0];
+}
+
+void timer_next(int fd)
+{
+    char c;
+    read(fd, &c, 1);
+}
+
+void timer_stop()
+{
+    struct itimerval it;
+    memset(&it, 0, sizeof(it));
+    if (setitimer(ITIMER_REAL, &it, NULL) < 0) {
+        perror("setitimer()");
+        exit(EXIT_FAILURE);
+    }
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = SIG_DFL;
+    if (sigaction(SIGALRM, &sa, NULL) < 0) {
+        perror("sigaction()");
+        exit(EXIT_FAILURE);
+    }
+
+    close(timer_fds[1]);
+    close(timer_fds[0]);
+}
+
+
 Display *display;
 
 int main()
@@ -81,6 +152,7 @@ int main()
         return 1;
     }
 
+    int x11_fd = ConnectionNumber(dpy);
     Window root = DefaultRootWindow(dpy);
 
     XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Shift_L), Mod1Mask, root, False,
@@ -111,81 +183,109 @@ int main()
     XScreenSaverSelectInput(dpy, root, ScreenSaverNotifyMask|ScreenSaverCycleMask);
     xss_printinfo(dpy);
 
+    int timer_fd = timer_start(1000);
+
     // Event loop
     for (;;) {
-        XNextEvent(dpy, &ev);
+        struct pollfd fds[2];
 
-        if (ev.type == KeyPress) {
-            printf("KeyPress\n");
+        fds[0].fd = timer_fd;
+        fds[0].events = POLLIN;
+        fds[1].fd = x11_fd;
+        fds[1].events = POLLIN;
 
-        } else if (ev.type == KeyRelease) {
-            printf("KeyRelease\n");
+        int err = poll(fds, 2, -1);
+        if (err < 0 && errno == EINTR) {
+            continue;
+        } else if (err < 0) {
+            perror("poll()");
+            exit(EXIT_FAILURE);
+        }
+        if (fds[0].revents) {    // Timer event received
+            printf("Timer\n");
 
-        } else if (ev.type == xkb_event) {
-            XkbEvent *kev = (XkbEvent *)&ev;
-            printf("ev=%#x\n", ev.type);
+            struct timeval tv;
+            gettimeofday(&tv, NULL);
 
-            const char *xkbNames[] = { "XkbNewKeyboardNotify", "XkbMapNotify", "XkbStateNotify",
+            timer_next(fds[0].fd);
+        }
+        if (fds[1].revents) {    // X event received
+            XNextEvent(dpy, &ev);
+
+            if (ev.type == KeyPress) {
+                printf("KeyPress\n");
+
+            } else if (ev.type == KeyRelease) {
+                printf("KeyRelease\n");
+
+            } else if (ev.type == xkb_event) {
+                XkbEvent *kev = (XkbEvent *)&ev;
+                printf("ev=%#x\n", ev.type);
+
+                const char *xkbNames[] = { "XkbNewKeyboardNotify", "XkbMapNotify", "XkbStateNotify",
                 "XkbControlsNotify", "XkbIndicatorStateNotify", "XkbIndicatorMapNotify", "XkbNamesNotify",
                 "XkbCompatMapNotify", "XkbBellNotify", "XkbActionMessage", "XkbAccessXNotify", "XkbExtensionDeviceNotify" };
 
-            printf("ev.xkb_type='%s'\n", xkbNames[kev->any.xkb_type]);
-            if (kev->any.xkb_type != XkbBellNotify)
-                continue;
+                printf("ev.xkb_type='%s'\n", xkbNames[kev->any.xkb_type]);
+                if (kev->any.xkb_type != XkbBellNotify)
+                    continue;
 
-            XkbBellNotifyEvent *bne = &kev->bell;
+                XkbBellNotifyEvent *bne = &kev->bell;
 
-            printf("XkbBellNotifyEvent {\n");
-            printf("  int      type = %#x;      /* XkbAnyEvent */\n", bne->type);
-            printf("  ulong    serial = %lu;    /* of last req processed by server */\n", bne->serial);
-            printf("  Bool     send_event = %d; /* is this from a SendEvent request? */\n", bne->send_event);
-            printf("  Display *display = %p;    /* Display the event was read from */\n", bne->display);
-            printf("  Time     time = %ld;      /* milliseconds */\n", bne->time);
-            printf("  int      xkb_type = '%s'; /* XkbBellNotify */\n", xkbNames[bne->xkb_type]);
-            printf("  int      device = %d;     /* device ID */\n", bne->device);
-            printf("  int      percent = %d;    /* requested volume as a %% of maximum */\n", bne->percent);
-            printf("  int      pitch = %d;      /* requested pitch in Hz */\n", bne->pitch);
-            printf("  int      duration = %d;   /* requested duration in useconds */\n", bne->duration);
-            printf("  int      bell_class = %d; /* (input extension) feedback class */\n", bne->bell_class);
-            printf("  int      bell_id = %d;    /* (input extension) ID of feedback */\n", bne->bell_id);
-            printf("  Atom     name = %ld;      /* name of requested bell */\n", bne->name);
-            printf("  Window   window = %#lx;   /* window associated with event */\n", bne->window);
-            printf("  Bool     event_only = %d; /* 'event only' requested */\n", bne->event_only);
-            printf("}\n");
+                printf("XkbBellNotifyEvent {\n");
+                printf("  int      type = %#x;      /* XkbAnyEvent */\n", bne->type);
+                printf("  ulong    serial = %lu;    /* of last req processed by server */\n", bne->serial);
+                printf("  Bool     send_event = %d; /* is this from a SendEvent request? */\n", bne->send_event);
+                printf("  Display *display = %p;    /* Display the event was read from */\n", bne->display);
+                printf("  Time     time = %ld;      /* milliseconds */\n", bne->time);
+                printf("  int      xkb_type = '%s'; /* XkbBellNotify */\n", xkbNames[bne->xkb_type]);
+                printf("  int      device = %d;     /* device ID */\n", bne->device);
+                printf("  int      percent = %d;    /* requested volume as a %% of maximum */\n", bne->percent);
+                printf("  int      pitch = %d;      /* requested pitch in Hz */\n", bne->pitch);
+                printf("  int      duration = %d;   /* requested duration in useconds */\n", bne->duration);
+                printf("  int      bell_class = %d; /* (input extension) feedback class */\n", bne->bell_class);
+                printf("  int      bell_id = %d;    /* (input extension) ID of feedback */\n", bne->bell_id);
+                printf("  Atom     name = %ld;      /* name of requested bell */\n", bne->name);
+                printf("  Window   window = %#lx;   /* window associated with event */\n", bne->window);
+                printf("  Bool     event_only = %d; /* 'event only' requested */\n", bne->event_only);
+                printf("}\n");
 
-            if (play_bell(bne->percent) < 0) {
-                perror("Ringing bell failed, reverting to X11 device bell.");
-                XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
+                if (play_bell(bne->percent) < 0) {
+                    perror("Ringing bell failed, reverting to X11 device bell.");
+                    XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
+                }
+
+                xss_printinfo(dpy);
+
+            } else if (ev.type == xss_event) {
+                XScreenSaverNotifyEvent *se = (XScreenSaverNotifyEvent *) &ev;
+                printf("XScreenSaverNotifyEvent {\n");
+                printf("  int type = %#x;             /* of event */\n", se->type);
+                printf("  unsigned long serial = %lu; /* # of last request processed by server */\n", se->serial);
+                printf("  Bool send_event = %d;       /* true if this came frome a SendEvent request */\n", se->send_event);
+                printf("  Display *display = %p;      /* Display the event was read from */\n", se->display);
+                printf("  Window window = %#lx;       /* screen saver window */\n", se->window);
+                printf("  Window root = %#lx;         /* root window of event screen */\n", se->root);
+                printf("  int state = '%s';           /* ScreenSaver{Off,On,Disabled} */\n", stateNames[se->state]);
+                printf("  int kind = '%s';            /* ScreenSaver{Blanked,Internal,External} */\n", kindNames[se->kind]);
+                printf("  Bool forced = %d;           /* extents of new region */\n", se->forced);
+                printf("  Time time = %ld;            /* event timestamp */\n", se->time);
+                printf("}\n");
+
+                if (se->state == ScreenSaverOn) {
+                    system("bash -i -c 'FREEZE -v; exit'");
+                    system("echo 7 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
+                } else if (se->state == ScreenSaverOff) {
+                    system("bash -i -c 'FREEZE -v -CONT; exit'");
+                    system("echo 0 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
+                }
+            } else {
+                printf("ev=%#x\n", ev.type);
             }
-
-            xss_printinfo(dpy);
-
-        } else if (ev.type == xss_event) {
-            XScreenSaverNotifyEvent *se = (XScreenSaverNotifyEvent *) &ev;
-            printf("XScreenSaverNotifyEvent {\n");
-            printf("  int type = %#x;             /* of event */\n", se->type);
-            printf("  unsigned long serial = %lu; /* # of last request processed by server */\n", se->serial);
-            printf("  Bool send_event = %d;       /* true if this came frome a SendEvent request */\n", se->send_event);
-            printf("  Display *display = %p;      /* Display the event was read from */\n", se->display);
-            printf("  Window window = %#lx;       /* screen saver window */\n", se->window);
-            printf("  Window root = %#lx;         /* root window of event screen */\n", se->root);
-            printf("  int state = '%s';           /* ScreenSaver{Off,On,Disabled} */\n", stateNames[se->state]);
-            printf("  int kind = '%s';            /* ScreenSaver{Blanked,Internal,External} */\n", kindNames[se->kind]);
-            printf("  Bool forced = %d;           /* extents of new region */\n", se->forced);
-            printf("  Time time = %ld;            /* event timestamp */\n", se->time);
-            printf("}\n");
-
-            if (se->state == ScreenSaverOn) {
-                system("bash -i -c 'FREEZE -v; exit'");
-                system("echo 7 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
-            } else if (se->state == ScreenSaverOff) {
-                system("bash -i -c 'FREEZE -v -CONT; exit'");
-                system("echo 0 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
-            }
-        } else {
-            printf("ev=%#x\n", ev.type);
         }
+
     }
 
+    timer_stop(timer_fd);
     return 0;
 }
