@@ -18,7 +18,7 @@ void debugf_set_names(const char *names);
 
 const char *debX11_atom(Atom atom);
 const char *debX11_win(Window w);
-void debX11ev(Window dst, XEvent event, const char* dir,
+void debX11ev(Window dst, XEvent *event, const char *dir,
               Window src, const char *s, ...);
 void debX11str(Window win, const char *s, ...);
 

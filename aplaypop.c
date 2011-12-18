@@ -1,5 +1,5 @@
 // sed -e '/[b]egin binary/,/[e]nd binary/ d' -e '/[C]MD:/ {p;s/\/\* [C]MD: \(.*\) \*\//\1/e}' -i aplaypop.c
-// gcc -W -Wall -o aplaypop aplaypop.c -lasound && ./aplaypop
+// gcc -W -Wall -DMAIN -o aplaypop aplaypop.c -lasound && ./aplaypop
 
 #include <stdio.h>      // printf()
 #include <unistd.h>     // write(), sleep()
@@ -298,3 +298,13 @@ int aplaypop_close()
     snd_pcm_close(handle);
     return 0;
 }
+
+#ifdef MAIN
+int main(void)
+{
+    aplaypop_open();
+    aplaypop();
+    aplaypop_close();
+    return 0;
+}
+#endif

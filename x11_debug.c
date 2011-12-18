@@ -1,6 +1,8 @@
-#include <stdio.h>
-#include <stdarg.h>
-#include <string.h>
+#include <stdio.h>  // sprintf(), vsnprintf()
+#include <stdarg.h> // va_*()
+#include <string.h> // strdup()
+#include <stdlib.h> // malloc()
+
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -164,7 +166,7 @@ const char *debX11_win(Window w) {
 }
 
 #ifdef DEBUG
-void debX11ev(Window dst, XEvent event, const char *dir,
+void debX11ev(Window dst, XEvent *event, const char *dir,
               Window src, const char *s, ...) {
     va_list ap;
     char msgbuf[4096];
@@ -174,12 +176,12 @@ void debX11ev(Window dst, XEvent event, const char *dir,
     if (src != None)
         DEBUGF("%s %s %s: %s%s{ %s } %s",
                debX11_win(dst), dir, debX11_win(src),
-               debX11_event(event), event.xany.send_event ? "+": "",
-               debX11_win(event.xany.window), msgbuf);
+               debX11_event(event), event->xany.send_event ? "+": "",
+               debX11_win(event->xany.window), msgbuf);
     else
         DEBUGF("%s: %s%s{ %s } %s", debX11_win(dst),
-               debX11_event(event), event.xany.send_event ? "+": "",
-               debX11_win(event.xany.window), msgbuf);
+               debX11_event(event), event->xany.send_event ? "+": "",
+               debX11_win(event->xany.window), msgbuf);
 }
 
 void debX11str(Window win, const char *s, ...) {
@@ -199,7 +201,8 @@ void debugf(const char *filename, const char *fmt, ...) {
     int skip = 1;
     if (skip && *debug_names == NULL) // Means debug ALL files
         skip = 0;
-    for (char **p = debug_names; skip && *p != NULL; p++)
+    char **p;
+    for (p = debug_names; skip && *p != NULL; p++)
         if (!strncmp(filename, *p, strlen(*p)) || !strcmp(filename, __FILE__))
             skip = 0;
     if (skip)
@@ -213,7 +216,7 @@ void debugf(const char *filename, const char *fmt, ...) {
     msgbuf[sizeof(msgbuf)-1] = '\0';
     va_end(ap);
 
-    fprintf(stderr, "FTE %s: %s\n", filename, msgbuf);
+    fprintf(stderr, "%s: %s\n", filename, msgbuf);
 }
 
 void debugf_set_names(const char *arg) {
@@ -224,17 +227,19 @@ void debugf_set_names(const char *arg) {
         return;
     }
 
-    char *names = strdup(arg);
+    // count comma-separated names in arg
+    char *p, *names = strdup(arg);
     int names_len = 0;
-    for (char *p = names; p != NULL; p = strchr(p, ',')) {
+    for (p = names; p != NULL; p = strchr(p, ',')) {
         names_len++;
         p++;
     }
 
     debug_names = (char **)malloc(names_len * sizeof(char *));
 
+    // split comma-separated names into debug_names array
     names_len = 0;
-    char *p = names;
+    p = names;
     while (*p) {
         debug_names[names_len++] = p;
         if ((p = strchr(p, ',')) == NULL)
@@ -243,8 +248,10 @@ void debugf_set_names(const char *arg) {
     }
     debug_names[names_len] = NULL;
 
-    for (char **p = debug_names; *p != NULL; p++)
-        DEBUGF("debug_names[]=%s", *p);
+    // print result
+    char **pp;
+    for (pp = debug_names; *pp != NULL; pp++)
+        DEBUGF("debug_names[]=%s", *pp);
 }
 
 #endif

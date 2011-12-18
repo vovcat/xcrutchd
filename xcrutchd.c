@@ -73,7 +73,6 @@ Display *display;
 
 int main()
 {
-
     XEvent ev;
 
     Display *dpy = display = XOpenDisplay(NULL);
@@ -112,8 +111,7 @@ int main()
     XScreenSaverSelectInput(dpy, root, ScreenSaverNotifyMask|ScreenSaverCycleMask);
     xss_printinfo(dpy);
 
-    //aplaypop_open();
-
+    // Event loop
     for (;;) {
         XNextEvent(dpy, &ev);
 
@@ -189,6 +187,5 @@ int main()
         }
     }
 
-    //aplaypop_close();
     return 0;
 }
