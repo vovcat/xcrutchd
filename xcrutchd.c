@@ -171,10 +171,12 @@ int main()
     int x11_fd = ConnectionNumber(dpy);
     Window root = DefaultRootWindow(dpy);
 
+    /*
     XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Shift_L), Mod1Mask, root, False,
              GrabModeAsync, GrabModeAsync);
     XGrabKey(dpy, XKeysymToKeycode(dpy, XK_Alt_L), ShiftMask, root, False,
              GrabModeAsync, GrabModeAsync);
+    */
 
     // Xkb
     int xkb_event, xkb_error, xkb_opcode, xkb_major, xkb_minor;
