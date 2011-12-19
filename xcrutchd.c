@@ -17,13 +17,7 @@
 #include <X11/extensions/dpms.h>
 
 #include "aplaypop.h"
-
-int play_bell(int percent) {
-    aplaypop_open();
-    aplaypop();
-    aplaypop_close();
-    return 0;
-}
+#define attr_unused __attribute__((__unused__))
 
 const char *stateNames[] = { "Off", "On", "Cycle", "Disable" };
 const char *kindNames[] = { "Blanked", "Internal", "External" };
@@ -77,7 +71,7 @@ int xss_printinfo(Display *dpy)
 
 static int timer_fds[2];
 
-static void timer_alarm(int sig)
+static void timer_alarm(attr_unused int sig)
 {
     write(timer_fds[1], "A", 1);
 }
@@ -139,6 +133,28 @@ void timer_stop()
     close(timer_fds[0]);
 }
 
+static int timediff_ms(struct timeval *before, struct timeval *after)
+{
+    return (
+            (long long) after->tv_sec * 1000000ll -
+            (long long) before->tv_sec * 1000000ll +
+            (long long) after->tv_usec -
+            (long long) before->tv_usec
+           ) / 1000;
+}
+
+static int aplaypop_idle = 5000; // ms
+static struct timeval play_bell_tv;
+
+int play_bell(attr_unused int percent) {
+    aplaypop();
+    if (gettimeofday(&play_bell_tv, NULL) < 0) {
+        perror("gettimeofday()");
+        exit(EXIT_FAILURE);
+    }
+    return 0;
+}
+
 
 Display *display;
 
@@ -183,7 +199,7 @@ int main()
     XScreenSaverSelectInput(dpy, root, ScreenSaverNotifyMask|ScreenSaverCycleMask);
     xss_printinfo(dpy);
 
-    int timer_fd = timer_start(1000);
+    int timer_fd = timer_start(2000);
 
     // Event loop
     for (;;) {
@@ -202,10 +218,15 @@ int main()
             exit(EXIT_FAILURE);
         }
         if (fds[0].revents) {    // Timer event received
-            printf("Timer\n");
+            //printf("Timer\n");
 
             struct timeval tv;
-            gettimeofday(&tv, NULL);
+            if (gettimeofday(&tv, NULL) < 0) {
+                perror("gettimeofday()");
+                exit(EXIT_FAILURE);
+            }
+            if (timediff_ms(&play_bell_tv, &tv) > aplaypop_idle)
+                aplaypop_close();
 
             timer_next(fds[0].fd);
         }

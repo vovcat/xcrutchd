@@ -71,17 +71,21 @@ char bin_data[] = /* 770 */
 /* end binary data. size = 770 bytes */
 
 static char *device = "default"; //"plughw:0,0"; /* playback device */
-static snd_pcm_t *handle;
-static snd_output_t *log;
+static snd_pcm_t *pcm_handle;
 static size_t frame_bytes;
 
-int aplaypop_open(void)
+static int aplaypop_open(void)
 {
     int err;
-    snd_pcm_info_t *info;
+    snd_pcm_t *handle;
 
+    if (pcm_handle)
+        return 0;
+
+    snd_pcm_info_t *info;
     snd_pcm_info_alloca(&info);
 
+    snd_output_t *log;
     err = snd_output_stdio_attach(&log, stderr, 0);
     assert(err == 0);
 
@@ -243,15 +247,19 @@ int aplaypop_open(void)
         bits_per_sample, bits_per_frame, chunk_bytes);
 
     frame_bytes = bits_per_frame / 8;
+    pcm_handle = handle;
     return 0;
 }
 
 int aplaypop()
 {
-    int err;
-    fprintf(stderr, "snd_pcm_state() = %s\n", snd_pcm_state_name(snd_pcm_state(handle)));
+    if (pcm_handle == NULL && aplaypop_open() != 0)
+        return -1;
 
-    err = snd_pcm_prepare(handle);
+    fprintf(stderr, "snd_pcm_state() = %s\n",
+            snd_pcm_state_name(snd_pcm_state(pcm_handle)));
+
+    int err = snd_pcm_prepare(pcm_handle);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_start(): %s\n", snd_strerror(err));
         return -1;
@@ -265,12 +273,12 @@ int aplaypop()
         // given in bytes, sometimes the number of frames has to be specified.
         // One frame is the sample data vector for all channels.
         // For 16 Bit stereo data, one frame has a length of four bytes.
-        snd_pcm_sframes_t frames = snd_pcm_writei(handle, ptr, len);
-        fprintf(stderr, "  snd_pcm_writei(handle, ptr, %d) = %ld\n", len, frames);
+        snd_pcm_sframes_t frames = snd_pcm_writei(pcm_handle, ptr, len);
+        fprintf(stderr, "  snd_pcm_writei(h, ptr, %d) = %ld\n", len, frames);
         if (frames == -EAGAIN) {
             frames = 0;
         } else if (frames < 0) { // -EPIPE, -ESTRPIPE
-            frames = snd_pcm_recover(handle, frames, 1/*silent*/);
+            frames = snd_pcm_recover(pcm_handle, frames, 1/*silent*/);
             if (frames < 0) {
                 fprintf(stderr, "writei/recover failed: %s\n", snd_strerror(err));
                 break;
@@ -282,10 +290,10 @@ int aplaypop()
         }
         len -= frames * frame_bytes;
         ptr += frames * frame_bytes;
-        snd_pcm_wait(handle, 10/*ms*/);
+        snd_pcm_wait(pcm_handle, 10/*ms*/);
     }
 
-    err = snd_pcm_drain(handle);
+    err = snd_pcm_drain(pcm_handle);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_start(): %s\n", snd_strerror(err));
         return -1;
@@ -295,15 +303,29 @@ int aplaypop()
 
 int aplaypop_close()
 {
-    snd_pcm_close(handle);
+    if (pcm_handle) {
+        int err = snd_pcm_close(pcm_handle);
+        if (err != 0) {
+            fprintf(stderr, "snd_pcm_close(): %s\n", snd_strerror(err));
+            pcm_handle = NULL;
+            return -1;
+        }
+        pcm_handle = NULL;
+    }
     return 0;
 }
 
 #ifdef MAIN
-int main(void)
+#include <unistd.h>
+int main(int argc, char *argv[])
 {
-    aplaypop_open();
-    aplaypop();
+    if (argc > 1) {
+        aplaypop_open();
+        char c;
+        read(0, &c, 1);
+    } else {
+        aplaypop();
+    }
     aplaypop_close();
     return 0;
 }
