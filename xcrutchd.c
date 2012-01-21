@@ -19,8 +19,9 @@
 #include "aplaypop.h"
 #define attr_unused __attribute__((__unused__))
 
-const char *stateNames[] = { "Off", "On", "Cycle", "Disable" };
-const char *kindNames[] = { "Blanked", "Internal", "External" };
+static int xss_state;
+static const char *stateNames[] = { "Off", "On", "Cycle", "Disable" };
+static const char *kindNames[] = { "Blanked", "Internal", "External" };
 
 int xss_printinfo(Display *dpy)
 {
@@ -64,6 +65,7 @@ int xss_printinfo(Display *dpy)
     printf("  unsigned long eventMask = %#lx;    /* selected events for this client */\n", xss_info->eventMask);
     printf("}\n");
 
+    xss_state = xss_info->state;
     XFree(xss_info);
 
     return xss_event;
@@ -302,6 +304,8 @@ int main()
                     system("bash -i -c 'FREEZE -v -CONT; exit'");
                     system("echo 0 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
                 }
+                xss_state = se->state;
+
             } else {
                 printf("ev=%#x\n", ev.type);
             }
