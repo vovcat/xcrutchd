@@ -299,10 +299,12 @@ int main()
                 printf("  Time time = %ld;            /* event timestamp */\n", se->time);
                 printf("}\n");
 
-                if (se->state == ScreenSaverOn) {
+                if (xss_state == ScreenSaverOff && se->state == ScreenSaverOn) {
+	                printf("FREEZE\n");
                     system("bash -i -c 'FREEZE -v; exit'");
                     system("echo 7 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
-                } else if (se->state == ScreenSaverOff) {
+                } else if (xss_state == ScreenSaverOn && se->state == ScreenSaverOff) {
+	                printf("UNFREEZE\n");
                     system("bash -i -c 'FREEZE -v -CONT; exit'");
                     system("echo 0 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
                 }
