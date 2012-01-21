@@ -238,20 +238,20 @@ int main()
             XNextEvent(dpy, &ev);
 
             if (ev.type == KeyPress) {
-                printf("KeyPress\n");
+                printf("\nKeyPress\n");
 
             } else if (ev.type == KeyRelease) {
-                printf("KeyRelease\n");
+                printf("\nKeyRelease\n");
 
             } else if (ev.type == xkb_event) {
+                printf("\nXkbEvent (ev=%#x)\n", ev.type);
                 XkbEvent *kev = (XkbEvent *)&ev;
-                printf("ev=%#x\n", ev.type);
 
                 const char *xkbNames[] = { "XkbNewKeyboardNotify", "XkbMapNotify", "XkbStateNotify",
                 "XkbControlsNotify", "XkbIndicatorStateNotify", "XkbIndicatorMapNotify", "XkbNamesNotify",
                 "XkbCompatMapNotify", "XkbBellNotify", "XkbActionMessage", "XkbAccessXNotify", "XkbExtensionDeviceNotify" };
 
-                printf("ev.xkb_type='%s'\n", xkbNames[kev->any.xkb_type]);
+                printf("  ev.xkb_type='%s'\n", xkbNames[kev->any.xkb_type]);
                 if (kev->any.xkb_type != XkbBellNotify)
                     continue;
 
@@ -283,7 +283,9 @@ int main()
                 xss_printinfo(dpy);
 
             } else if (ev.type == xss_event) {
+                printf("\nXScreenSaverEvent (ev=%#x)\n", ev.type);
                 XScreenSaverNotifyEvent *se = (XScreenSaverNotifyEvent *) &ev;
+
                 printf("XScreenSaverNotifyEvent {\n");
                 printf("  int type = %#x;             /* of event */\n", se->type);
                 printf("  unsigned long serial = %lu; /* # of last request processed by server */\n", se->serial);
@@ -307,7 +309,7 @@ int main()
                 xss_state = se->state;
 
             } else {
-                printf("ev=%#x\n", ev.type);
+                printf("\nXEvent=%#x\n", ev.type);
             }
         }
 
