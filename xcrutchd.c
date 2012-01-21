@@ -275,12 +275,14 @@ int main()
                 printf("  Bool     event_only = %d; /* 'event only' requested */\n", bne->event_only);
                 printf("}\n");
 
-                if (play_bell(bne->percent) < 0) {
-                    perror("Ringing bell failed, reverting to X11 device bell.");
-                    XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
-                }
-
-                xss_printinfo(dpy);
+				if (xss_state != ScreenSaverOn) {	// Off or Disabled
+					if (play_bell(bne->percent) < 0) {
+						perror("Ringing bell failed, reverting to X11 device bell.");
+						XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
+					}
+	            } else {
+	                printf("SKIPPED\n");
+	            }
 
             } else if (ev.type == xss_event) {
                 printf("\nXScreenSaverEvent (ev=%#x)\n", ev.type);
