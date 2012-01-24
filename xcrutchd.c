@@ -20,6 +20,7 @@
 #define attr_unused __attribute__((__unused__))
 
 static int xss_state;
+static Time lastbeep;
 static const char *stateNames[] = { "Off", "On", "Cycle", "Disable" };
 static const char *kindNames[] = { "Blanked", "Internal", "External" };
 
@@ -276,9 +277,12 @@ int main()
                 printf("}\n");
 
 				if (xss_state != ScreenSaverOn) {	// Off or Disabled
-					if (play_bell(bne->percent) < 0) {
-						perror("Ringing bell failed, reverting to X11 device bell.");
-						XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
+					if (lastbeep < bne->time) {
+						if (play_bell(bne->percent) < 0) {
+							perror("Ringing bell failed, reverting to X11 device bell.");
+							XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
+						}
+						lastbeep = bne->time;
 					}
 	            } else {
 	                printf("SKIPPED\n");
