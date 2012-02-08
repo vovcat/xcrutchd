@@ -276,17 +276,17 @@ int main()
                 printf("  Bool     event_only = %d; /* 'event only' requested */\n", bne->event_only);
                 printf("}\n");
 
-				if (xss_state != ScreenSaverOn) {	// Off or Disabled
-					if (lastbeep < bne->time) {
-						if (play_bell(bne->percent) < 0) {
-							perror("Ringing bell failed, reverting to X11 device bell.");
-							XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
-						}
-						lastbeep = bne->time;
-					}
-	            } else {
-	                printf("SKIPPED\n");
-	            }
+                if (xss_state != ScreenSaverOn) {   // Off or Disabled
+                    if (lastbeep < bne->time) {
+                        if (play_bell(bne->percent) < 0) {
+                            perror("Ringing bell failed, reverting to X11 device bell.");
+                            XkbForceDeviceBell(dpy, bne->device, bne->bell_class, bne->bell_id, bne->percent);
+                        }
+                        lastbeep = bne->time;
+                    }
+                } else {
+                    printf("SKIPPED\n");
+                }
 
             } else if (ev.type == xss_event) {
                 printf("\nXScreenSaverEvent (ev=%#x)\n", ev.type);
@@ -306,11 +306,11 @@ int main()
                 printf("}\n");
 
                 if (xss_state == ScreenSaverOff && se->state == ScreenSaverOn) {
-	                printf("FREEZE\n");
+                    printf("FREEZE\n");
                     system("bash -i -c 'FREEZE -v; exit'");
                     system("echo 7 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
                 } else if (xss_state == ScreenSaverOn && se->state == ScreenSaverOff) {
-	                printf("UNFREEZE\n");
+                    printf("UNFREEZE\n");
                     system("bash -i -c 'FREEZE -v -CONT; exit'");
                     system("echo 0 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
                 }
