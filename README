@@ -7,10 +7,10 @@ This daemon perform two functions:
 - beeps ALSA device upon receiving XkbBellNotifyEvent
 
 - calls user-defined script and mutes beeps on ScreenSaverOff ->
-ScreenSaverOn and backward trasition upon receiving XScreenSaverNotifyEvent
+ScreenSaverOn and backward transition upon receiving XScreenSaverNotifyEvent
 
 First thing the pulseaudio can do, but on my computers even latest as of
-Jan 2012 version crashes every 1-7 minutes with SIGBUS like this:
+Jan 2012 version crashes every 1-7 minutes with SIGBUS like so:
 
 [pid 21529] 09:53:42.382701 clock_gettime(CLOCK_MONOTONIC, {289985, 811793362}) = 0
 [pid 21529] 09:53:42.382806 clock_gettime(CLOCK_MONOTONIC, {289985, 811898404}) = 0
@@ -27,7 +27,7 @@ Process 21530 detached
 [pid 21529] 09:53:42.463271 +++ killed by SIGABRT +++
 09:53:42.463342 +++ killed by SIGABRT +++
 
-or this:
+or so:
 
 [pid 28462] 09:54:11.740906 [b764ee11] clock_gettime(CLOCK_MONOTONIC, {376413, 723675281}) = 0
 [pid 28462] 09:54:11.741010 [b764ee11] clock_gettime(CLOCK_MONOTONIC, {376413, 723779135}) = 0
@@ -44,7 +44,11 @@ Process 28463 detached
 [pid 28462] 09:54:11.793496 [????????] +++ killed by SIGABRT +++
 09:54:11.793569 [????????] +++ killed by SIGABRT +++
 
-Built-in restart doesn't help whe you looking long YouTube video or
+Just google for 'pulseaudio "Failed to handle SIGBUS"' and see there's no
+solution, only links to http://pulseaudio.org/wiki/BrokenSoundDrivers
+and http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=593664
+
+Built-in restart doesn't help when you are looking long YouTube video or
 recording from webcam. At the same time ALSA software mixer works great,
 but doesn't beep:) No way I can use this piece of pottering. So making
 my own X11 crutches...
