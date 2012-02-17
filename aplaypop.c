@@ -93,7 +93,8 @@ static int aplaypop_open(void)
     err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, 0);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_open(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
+        return err;
     }
     err = snd_pcm_nonblock(handle, 0);
     if (err != 0) {
