@@ -307,10 +307,12 @@ int main()
 
                 if (xss_state == ScreenSaverOff && se->state == ScreenSaverOn) {
                     printf("FREEZE\n");
+                    aplaypop_close();
                     system("bash -i -c 'FREEZE -v; exit'");
                     system("echo 7 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
                 } else if (xss_state == ScreenSaverOn && se->state == ScreenSaverOff) {
                     printf("UNFREEZE\n");
+                    aplaypop_wake();
                     system("bash -i -c 'FREEZE -v -CONT; exit'");
                     system("echo 0 |sudo tee '/sys/devices/LNXSYSTM:00/LNXCPU:00/thermal_cooling/cur_state'");
                 }

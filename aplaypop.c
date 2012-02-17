@@ -7,6 +7,7 @@
 #include <sys/ioctl.h>  // ioctl()
 
 #include <alsa/asoundlib.h>
+#include "aplaypop.h"
 
 #define RATE 48000   /* the sampling rate */
 #define SIZE 16      /* sample size: 8 or 16 bits */
@@ -253,13 +254,14 @@ static int aplaypop_open(void)
 
 int aplaypop()
 {
-    if (pcm_handle == NULL && aplaypop_open() != 0)
+    int err = aplaypop_wake();
+    if (err != 0)
         return -1;
 
     fprintf(stderr, "snd_pcm_state() = %s\n",
             snd_pcm_state_name(snd_pcm_state(pcm_handle)));
 
-    int err = snd_pcm_prepare(pcm_handle);
+    err = snd_pcm_prepare(pcm_handle);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_start(): %s\n", snd_strerror(err));
         return -1;
@@ -298,6 +300,13 @@ int aplaypop()
         fprintf(stderr, "snd_pcm_start(): %s\n", snd_strerror(err));
         return -1;
     }
+    return 0;
+}
+
+int aplaypop_wake()
+{
+    if (pcm_handle == NULL && aplaypop_open() != 0)
+        return -1;
     return 0;
 }
 
