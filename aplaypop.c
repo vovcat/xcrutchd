@@ -99,12 +99,12 @@ static int aplaypop_open(void)
     err = snd_pcm_nonblock(handle, 0);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_nonblock(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
     err = snd_pcm_info(handle, info);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_info(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 
     // DOESN'T WORK!
@@ -112,7 +112,7 @@ static int aplaypop_open(void)
         SND_PCM_ACCESS_RW_INTERLEAVED, CHANNELS, RATE, 1, 50000);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_set_params(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 
     // RIGHT WAY:
@@ -126,30 +126,31 @@ static int aplaypop_open(void)
     snd_pcm_hw_params_alloca(&hwparams);
     snd_pcm_sw_params_alloca(&swparams);
 
+    // Fill params with a full configuration space for a PCM
     err = snd_pcm_hw_params_any(handle, hwparams);
     if (err != 0) {
-        fprintf(stderr, "Broken configuration for this PCM: %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        fprintf(stderr, "snd_pcm_hw_params_any(): %s\n", snd_strerror(err));
+        //exit(EXIT_FAILURE);
     }
     err = snd_pcm_hw_params_set_access(handle, hwparams, SND_PCM_ACCESS_RW_INTERLEAVED);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_hw_params_set_access(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
     err = snd_pcm_hw_params_set_format(handle, hwparams, format);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_hw_params_set_format(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
     err = snd_pcm_hw_params_set_channels(handle, hwparams, channels);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_hw_params_set_channels(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
     err = snd_pcm_hw_params_set_rate_near(handle, hwparams, &rate, 0);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_hw_params_set_rate_near(): %s\n", snd_strerror(err));
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
     }
 /*
     unsigned buffer_time = 0;
@@ -191,7 +192,8 @@ static int aplaypop_open(void)
     if (err != 0) {
         fprintf(stderr, "snd_pcm_hw_params(): %s\n", snd_strerror(err));
         snd_pcm_hw_params_dump(hwparams, log);
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
+        return err;
     }
     snd_pcm_uframes_t chunk_size = 0;
     snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
@@ -231,7 +233,8 @@ static int aplaypop_open(void)
     if (err != 0) {
         fprintf(stderr, "snd_pcm_sw_params(): %s\n", snd_strerror(err));
         snd_pcm_sw_params_dump(swparams, log);
-        exit(EXIT_FAILURE);
+        //exit(EXIT_FAILURE);
+        return err;
     }
     // END OF THE RIGHT WAY
 
