@@ -93,19 +93,22 @@ static int aplaypop_open(void)
     err = snd_pcm_open(&handle, device, SND_PCM_STREAM_PLAYBACK, 0);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_open(): %s\n", snd_strerror(err));
-        //exit(EXIT_FAILURE);
         return err;
     }
     err = snd_pcm_nonblock(handle, 0);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_nonblock(): %s\n", snd_strerror(err));
-        //exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
     err = snd_pcm_info(handle, info);
     if (err != 0) {
         fprintf(stderr, "snd_pcm_info(): %s\n", snd_strerror(err));
-        //exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
+#ifdef MAIN
+    fprintf(stderr, "snd_pcm_info_get_name(): %s\n", snd_pcm_info_get_name(info));
+    fprintf(stderr, "snd_pcm_info_get_subdevice_name(): %s\n", snd_pcm_info_get_subdevice_name(info));
+#endif
 
     // DOESN'T WORK!
     err = snd_pcm_set_params(handle, SND_PCM_FORMAT_S16_LE,
@@ -192,9 +195,11 @@ static int aplaypop_open(void)
     if (err != 0) {
         fprintf(stderr, "snd_pcm_hw_params(): %s\n", snd_strerror(err));
         snd_pcm_hw_params_dump(hwparams, log);
-        //exit(EXIT_FAILURE);
         return err;
     }
+#ifdef MAIN
+    snd_pcm_hw_params_dump(hwparams, log);
+#endif
     snd_pcm_uframes_t chunk_size = 0;
     snd_pcm_hw_params_get_period_size(hwparams, &chunk_size, 0);
     snd_pcm_uframes_t buffer_size;
