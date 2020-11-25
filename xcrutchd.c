@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h> // memset()
 #include <stdlib.h> // system()
-#include <unistd.h> // read(), write()
+#include <unistd.h> // read(), write(), pipe()
 #include <signal.h> // sigaction()
 #include <errno.h> // EINTR
 #include <poll.h> // poll()
@@ -202,7 +202,9 @@ int main()
 
     // XScreenSaver
     int xss_event = xss_printinfo(dpy);
-    XScreenSaverSelectInput(dpy, root, ScreenSaverNotifyMask|ScreenSaverCycleMask);
+    XScreenSaverSetAttributes(dpy, root, -1, -1, 1, 1, 0, 0, 0, NULL, 0, NULL);
+    XScreenSaverSelectInput(dpy, root, ScreenSaverNotifyMask | ScreenSaverCycleMask);
+    XFlush(dpy);
 
     int timer_fd = timer_start(2000);
 
