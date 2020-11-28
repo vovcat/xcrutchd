@@ -1,0 +1,14 @@
+[Unit]
+Description=XCrutch Daemon
+Documentation=man:xcrutchd
+PartOf=graphical-session.target
+
+[Service]
+Type=exec
+ExecStart=env xcrutchd
+Restart=on-failure
+RestartSec=3
+RestartPreventExitStatus=3
+
+[Install]
+WantedBy=default.target
